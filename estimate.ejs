@@ -1,0 +1,260 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title><%- title %></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="javascripts/js.cookie.js"></script>
+    <script src="javascripts/utils.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="icon" type="image/png" href="/images/odot.png">
+    <script>
+        address = $.cookie("address");
+
+        btc_eth = null;
+        usd_btc = null;
+        avgBlockTime = null;
+        avgDifficulty = null;
+        ethPrice = null;
+
+        var populateInit = function() {
+            $.getJSON("https://poloniex.com/public?command=returnTicker").done(function(data) {
+                btc_eth = data["BTC_ETH"]["last"];
+                usd_btc = data["USDT_BTC"]["last"];
+                ethPrice = btc_eth * usd_btc;
+                $.post("/getPendingBlocks", function(data) {
+                    data.reverse();
+                    var globalDifficulty = parseInt(data[data.length - 1]['difficulty']);
+                    var avgBlocktime = 0;
+                    for (var i = 1; i < data.length; i++) {
+                        var blocktime = parseInt(data[i]['timestamp']) - parseInt(data[i - 1]['timestamp']);
+                        avgBlocktime += blocktime;
+                    }
+                    avgBlocktime /= data.length - 1;
+                    console.log(avgBlocktime);
+
+                    $("#blocktime").val(avgBlocktime);
+                    $("#networkHashrate").val(globalDifficulty/avgBlocktime/1e9);
+                    $("#ethPrice").val(ethPrice);
+                    populate();
+                });
+            });
+
+        }
+
+        var populate = function() {
+            var yourHashrate = $("#yourHashrate").val();
+            var networkHashrate = $("#networkHashrate").val();
+            var blocktime = $("#blocktime").val();
+            var ethPrice = $("#ethPrice").val();
+
+            var userRatio = (yourHashrate * 1e6) / (networkHashrate * 1e9);
+            console.log(userRatio);
+            var blocksPerMin = 60.0/blocktime;
+            var ethPerMin = blocksPerMin * 5.0 * userRatio;
+
+            $("#etherHour").html(getUnitLink(ethPerMin * 60, ethPerMin * 60, "Ether"));
+            $("#etherDay").html(getUnitLink(ethPerMin * 60 * 24, ethPerMin * 60 * 24, "Ether"));
+            $("#etherWeek").html(getUnitLink(ethPerMin * 60 * 24 * 7, ethPerMin * 60 * 24 * 7, "Ether"));
+            $("#etherMonth").html(getUnitLink(ethPerMin * 60 * 24 * 31, ethPerMin * 60 * 24 * 31, "Ether"));
+            $("#etherYear").html(getUnitLink(ethPerMin * 60 * 24 * 365, ethPerMin * 60 * 24 * 365, "Ether"));
+
+            $("#usdHour").html(getUnitLink(ethPerMin * 60 * ethPrice, ethPerMin * 60 * ethPrice, "USD ($)"));
+            $("#usdDay").html(getUnitLink(ethPerMin * 60 * 24 * ethPrice, ethPerMin * 60 * 24 * ethPrice, "USD ($)"));
+            $("#usdWeek").html(getUnitLink(ethPerMin * 60 * 24 * 7 * ethPrice, ethPerMin * 60 * 24 * 7 * ethPrice, "USD ($)"));
+            $("#usdMonth").html(getUnitLink(ethPerMin * 60 * 24 * 31 * ethPrice, ethPerMin * 60 * 24 * 31 * ethPrice, "USD ($)"));
+            $("#usdYear").html(getUnitLink(ethPerMin * 60 * 24 * 365 * ethPrice, ethPerMin * 60 * 24 * 365 * ethPrice, "USD ($)"));
+
+        }
+
+            
+        $(document).ready(function() {
+            var hashrate = getUrlParameter("hashrate");
+            if (hashrate) {
+                $("#yourHashrate").val(hashrate);
+            }
+            else {
+                $("#yourHashrate").val(25);
+            }
+                
+            $("#addressField").html(getAddressLink(address));
+            populateInit();
+
+            $("#yourHashrate").on('input', function() {
+                //this.value = this.value.replace(/[^0-9\.]/g,'');
+                populate();
+            });
+            $("#networkHashrate").on('input', function() {
+                //this.value = this.value.replace(/[^0-9\.]/g,'');
+                populate();
+            });
+
+            $("#blocktime").on('input', function() {
+                //this.value = this.value.replace(/[^0-9\.]/g,'');
+                populate();
+            });
+            $("#ethPrice").on('input', function() {
+                //this.value = this.value.replace(/[^0-9\.]/g,'');
+                populate();
+            });
+            $("#logout").click(function() {
+                $.removeCookie("address");
+                $.removeCookie("latestPage");
+                window.location.replace("/");
+            });
+
+
+
+
+
+        });
+    </script>
+    <style>
+        .input-group-addon {
+            background-color: rgb(91, 192, 222);
+            color: rgb(255, 255, 255);
+            border-color: rgb(91, 182, 222);
+        }
+    </style>
+  </head>
+  <body>
+
+<nav class="navbar navbar-default">
+  <div class="container-fluid">
+    <div class="navbar-header">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
+                    <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                                    <span class="icon-bar"></span> 
+                                          </button>
+      <a class="navbar-brand" href="#">
+          One.
+      </a>
+    </div>
+    <div class="collapse navbar-collapse" id="myNavbar">
+    <ul class="nav navbar-nav">
+        <li><a href="/board">Board <img style="height:15px;width:15px;margin-top:-2px" src="/images/oneboard.png"></img></a></li>
+        <li><a href="/chain">Chain <img style="height:15px;width:15px;margin-top:-2px" src="images/onechain.png"></img></a></li>
+        <li><a href="/dice">Dice <img style="height:15px;width:15px;margin-top:-2px" src="images/onedice.png"></img></a></li>
+        <li class="active"><a href="#">Estimate <img style="height:15px;width:15px;margin-top:-2px" src="images/oneestimate.png"></a></li>
+        <li><a href="/pool">Pool <img style="height:15px;width:15px;margin-top:-2px" src="images/onepool.png"></img></a></li>
+        <li><a href="/unit">Unit <img style="height:15px;width:15px;margin-top:-2px" src="images/oneunit.png"></img></a></li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+          <li><a>Your Address: <span id="addressField">Guest</span></a></li>
+          <li><a id="logout">Logout</a></li>
+      </ul>
+  </div>
+  </div>
+</nav>
+
+    <div class="container">
+        <!-- Dice Logo -->
+        <div class="row">
+            <div class="col-md-12" style="text-align:center">
+                <h1><b>One.</b> Estimate
+                    
+                <img style="height:75px;width:75px" src="images/oneestimate.png"> 
+            
+            </h1>
+            </div>
+        </div>
+        <!-- Address Bar -->
+        <div class="row" style="text-align:center;margin-top:10px">
+            A simple profitability calculator.
+        </div>
+        <div style="text-align:center">
+              <a href="https://www.facebook.com/OneEther"><img src="images/facebookicon.png" style="height:20px;width:20px"></a>
+              <a href="https://twitter.com/OneEther"><img src="images/twittericon.png" style="height:20px;width:20px"></a>
+              <a href="mailto:oneether@gmail.com"><img src="images/emailicon.png" style="height:20px;width:20px"></a>
+        </div>
+
+    </div>
+
+    <div class="well" style="margin-top:25px">
+        <div class="row">
+            <div class="col-md-6 col-md-offset-3">
+        
+        <div class="input-group">
+          <span class="input-group-addon">Your Hashrate</span>
+          <input id="yourHashrate" type="number" class="form-control">
+          <span class="input-group-addon">MH/s</span>
+        </div>
+            </div>
+            <div class="col-md-4 col-md-offset-4">
+
+        <div class="input-group" style="margin-top:10px">
+          <span class="input-group-addon">Network Hashrate</span>
+          <input id="networkHashrate" type="number" class="form-control">
+          <span class="input-group-addon">GH/s</span>
+        </div>
+
+        <div class="input-group">
+          <span class="input-group-addon">Blocktime</span>
+          <input id="blocktime" type="number" class="form-control">
+          <span class="input-group-addon">seconds</span>
+        </div>
+
+        <div class="input-group">
+          <span class="input-group-addon">ETH Price</span>
+          <input id="ethPrice" type="number" class="form-control">
+          <span class="input-group-addon">USD ($)</span>
+        </div>
+
+
+          </div><!-- /.col-lg-6 -->
+</div><!-- /.row -->
+    </div> <!-- well -->
+
+<div class="row">
+
+    <div class="col-md-6 col-md-offset-3">
+        <div class="panel panel-default">
+
+          <!-- Table -->
+        <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Ether</th>
+                <th>USD</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Hour</td>
+                <td id="etherHour">NaN</td>
+                <td id="usdHour">NaN</td>
+              </tr>
+              <tr>
+                <td>Day</td>
+                <td id="etherDay">NaN</td>
+                <td id="usdDay">NaN</td>
+              </tr>
+              <tr>
+                <td>Week</td>
+                <td id="etherWeek">NaN</td>
+                <td id="usdWeek">NaN</td>
+              </tr>
+              <tr>
+                <td>Month</td>
+                <td id="etherMonth">NaN</td>
+                <td id="usdMonth">NaN</td>
+              </tr>
+              <tr>
+                <td>Year</td>
+                <td id="etherYear">NaN</td>
+                <td id="usdYear">NaN</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+    </div>
+
+</div><!-- /.row -->
+
+</div> <!--container-->
+  </body>
+</html>
